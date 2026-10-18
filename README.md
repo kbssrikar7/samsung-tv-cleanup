@@ -290,3 +290,10 @@ hashes in the results document identify the inspected software, not the TV owner
 - [REA](https://github.com/morluto/rea)
   supplied offline managed-assembly inspection.
 
+## License
+
+This documentation is licensed under the [MIT License](LICENSE).
+Copyright (c) 2026 kbssrikar7.
+
+Referenced tools and Samsung software retain their respective licenses and are
+not bundled in this repository.
