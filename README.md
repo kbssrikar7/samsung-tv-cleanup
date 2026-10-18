@@ -276,7 +276,7 @@ Do not publish raw device-information responses, IP/MAC addresses, serial number
 DUIDs, pairing tokens, account data, or full content/history caches. The artifact
 hashes in the results document identify the inspected software, not the TV owner.
 
-## References and license
+## References
 
 - [Samsung: disable Samsung TV Plus](https://www.samsung.com/au/support/tv-audio-video/disable-samsung-tv-plus/)
   documents the UI disable flow; it is regional guidance, not proof that every
@@ -290,5 +290,3 @@ hashes in the results document identify the inspected software, not the TV owner
 - [REA](https://github.com/morluto/rea)
   supplied offline managed-assembly inspection.
 
-This documentation is available under the [MIT License](LICENSE). Upstream tools
-and Samsung software retain their own licenses; they are not bundled here.
