@@ -218,3 +218,85 @@ each target. Both should be `false` where enabled was the original state. Reload
 Home as described in the README and check the screen. A complete all-target
 rollback was prepared but not executed; only the targeted-ad package round trip
 and TV Plus launcher app round trip were experimentally verified.
+
+## Third pass: voice/assistant, SmartThings, and HbbTV app flags
+
+Investigated on a later session on the same TV. The owner confirmed they use no
+TV voice search/Bixby (voice input is handled on a companion phone and sent to
+the app as text), no SmartThings, and no antenna/cable live TV. The following
+**application** flags were each read, disabled with
+`pkgcmd -D -t app -n <app-id> --uid <owner>`, and verified by database readback
+to `app_disable=true`:
+
+| App ID | Group |
+| --- | --- |
+| `com.samsung.tv.bixby-prov` | Voice/Bixby |
+| `com.samsung.tv.bixbycapsuleviewer` | Voice/Bixby |
+| `org.tizen.multi-assistant-service` | Voice/Bixby |
+| `org.tizen.voice-app` | Voice/Bixby |
+| `org.tizen.voice-client` | Voice/Bixby |
+| `com.samsung.tv.ondevice-voice` | Voice/Bixby |
+| `com.samsung.tv.digitalbutler-daemon` | Voice/Bixby |
+| `com.samsung.tv.action-planner-service` | Voice/Bixby |
+| `com.samsung.tv.utterance-recommender-core` | Voice/Bixby |
+| `com.samsung.tizen.smartthings-thing` | SmartThings/IoT |
+| `com.samsung.tv.smartthingsfind-daemon` | SmartThings/IoT |
+| `com.samsung.tv.iot-hub-control` | SmartThings/IoT |
+| `org.tizen.hbbtv-service` | Broadcast interactive/overlay |
+
+Home Media was reloaded afterward (`app_launcher -k`/`-s`). The owner confirmed
+Home, the app launcher, and the companion-phone text search continued to work.
+
+**Scope and limits.** These are not in the earlier tested set and their
+independent safety on other models/firmware is not established. Only entries that
+exist as app records and were enabled were touched; core daemons that are not app
+records cannot be disabled via `-t app` and were not. Disabling the application
+flag does not kill an already-running process until the next reboot. **Persistence
+of this set across a reboot was not independently re-verified**; see the DNS
+mitigation below, which is what actually prevents re-activation.
+
+## Re-download domain and the DNS mitigation
+
+After a reboot, the first-pass ad/ACR/TV-Plus **application** flags still read
+`app_disable=true` on readback, yet a home-screen advertisement reappeared.
+Network DNS logs from a filtering resolver showed the TV querying, among others:
+
+- `osb-apps-v2.samsungqbe.com`, `osb-v2.samsungqbe.com`,
+  `osb-tnc-v2-appsacc.samsungqbe.com`, `tls.samsungqbe.com`
+  (a Samsung online-service / re-download host family)
+- `tvp-ads-log.samsungads.com` (ad logging)
+- `tvx.adgrx.com` (a third-party TV ad exchange)
+
+This is consistent with the device re-fetching ad content and re-activating
+disabled services out of band, which explains the earlier observation that ACR
+restarted during a later session. **A per-flag disable is therefore not durable
+on this firmware; a network-level block of the re-download/ad hosts is.**
+
+A filtering resolver (NextDNS) was configured with the vendor's Samsung
+native-tracking protection list plus an explicit denylist of `samsungqbe.com`,
+`samsungads.com`, and `samsungacr.com` (subdomains inherited). The resolver's
+live query log then showed the `samsungqbe`, `samsungads`, and `adgrx` hosts
+returning **blocked**, while essential application hosts observed in the same
+session were left **allowed** and playback continued:
+
+- allowed: `cdn.samsungcloudsolution.com`, `api.samsungcloud.com`,
+  `livingroom.hotstar.com`, `usersvc.hotstar.com`
+
+**Do not** deny `samsung.com` or `samsungapps.com`; that breaks the app store and
+firmware updates. **Do not** deny Hotstar's `livingroom.*`/`usersvc.*` hosts, or
+the app fails to load.
+
+**Hotstar / SSAI limit.** No Hotstar ad-serving host appeared that could be
+blocked without breaking the app. Hotstar's in-stream ads are server-side
+inserted (shared with content delivery), so DNS filtering cannot remove them;
+only separate analytics/beacon hosts are blockable, and that does not remove the
+ads. This matches community reports that blocking core Hotstar hosts
+(for example `service.hotstar.com`, `api-jiostar.bitdrift.io`) yields a black
+screen.
+
+The TV's single DNS field was pointed at the filtering resolver's IPv4 address.
+Because a plain-DNS client cannot authenticate, the resolver profile was tied to
+the network's public IP via the resolver's "linked IP" feature; on a connection
+whose public IP rotates, that link must be refreshed. No personal identifiers
+(TV IP/MAC/DUID, account data, public IP, resolver profile ID, pairing tokens)
+are published here.

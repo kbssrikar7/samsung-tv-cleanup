@@ -276,6 +276,28 @@ Do not publish raw device-information responses, IP/MAC addresses, serial number
 DUIDs, pairing tokens, account data, or full content/history caches. The artifact
 hashes in the results document identify the inspected software, not the TV owner.
 
+## DNS-level mitigation (the durable layer)
+
+Disabling application flags with `pkgcmd` is **not durable** on this firmware:
+after a reboot the ad/ACR flags still read disabled, but a home-screen ad
+reappeared and DNS logs showed the TV re-contacting a Samsung re-download/ad host
+family (`osb-*.samsungqbe.com`, `tvp-ads-log.samsungads.com`) plus a third-party
+ad exchange (`tvx.adgrx.com`). The device re-fetches and re-activates out of band.
+
+The layer that holds across reboots is a **filtering DNS resolver**. On the tested
+setup a resolver was configured with the vendor's Samsung native-tracking list and
+an explicit denylist of `samsungqbe.com`, `samsungads.com`, `samsungacr.com`
+(subdomains inherited), and the TV's DNS was pointed at it. Live query logs
+confirmed those hosts returned blocked while essential app hosts stayed allowed.
+
+- **Do not** deny `samsung.com` / `samsungapps.com` (breaks store and updates).
+- **Do not** deny Hotstar `livingroom.*` / `usersvc.*` (app fails to load).
+- Hotstar in-stream ads are server-side inserted and **cannot** be DNS-blocked;
+  only separate analytics hosts are, which does not remove the ads.
+
+See [VERIFIED-RESULTS.md](VERIFIED-RESULTS.md) for the full third-pass app list,
+the observed hosts, and the limits.
+
 ## References
 
 - [Samsung: disable Samsung TV Plus](https://www.samsung.com/au/support/tv-audio-video/disable-samsung-tv-plus/)
